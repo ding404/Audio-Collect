@@ -3,17 +3,46 @@ var http = require('http');
 var serveStatic = require('serve-static');
 
 var app = express();
-var server = http.createServer(app);
+app.use(serveStatic(__dirname + '/public'))
+    .use(express.urlencoded({
+        extended: true
+    }))
+    .use(express.json());
 
-app.use(serveStatic(__dirname + '/public'));
+var router = express.Router();
+router.route('/')
+    .get(function(req, res) {
+        console.log('get accounts');
+    })
+    .post(function(req, res) {
+        console.log('add a account');
+        for (var key in req.body) {
+            console.log(key + ' : ' + req.body[key]);
+        }
+    })
+    .delete(function(req, res) {
+        console.log('delete accounts');
+    });
+router.route('/:id')
+    .all(function(req, res, next) {
+        var id = req.params['id'];
+        console.log('account id:' + id);
+        req.id = id;
+        next();
+    })
+    .get(function(req, res) {
+        console.log('get account id:' + req.id);
+    })
+    .put(function(req, res) {
+        console.log('replace a account id:' + req.id);
+    })
+    .delete(function(req, res) {
+        console.log('delete a account id:' + req.id);
+    });
+
+app.use('/account', router);
 
 
-server.listen(3000, getLocalAddress());
-server.on('listening', function() {
-    console.log('Express server started on http://%s:%s'
-        , server.address().address
-        , server.address().port);
-});
 
 function getLocalAddress() {
     var os = require('os');
@@ -32,3 +61,19 @@ function getLocalAddress() {
     });
     return address;
 }
+
+function startService() {
+    var server = http.createServer(app);
+    server.listen(3000, getLocalAddress());
+    server.on('listening', function() {
+        console.log('Express server started on http://%s:%s'
+            , server.address().address
+            , server.address().port);
+    });
+}
+
+var User = require('./account_db');
+
+
+
+startService();

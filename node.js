@@ -1,13 +1,11 @@
 var express = require('express');
+var session = require('express-session');
 var http = require('http');
 var serveStatic = require('serve-static');
+var User = require('./account_db');
+var compression = require('compression');
+var timeout = require('connect-timeout');
 
-var app = express();
-app.use(serveStatic(__dirname + '/public'))
-    .use(express.urlencoded({
-        extended: true
-    }))
-    .use(express.json());
 
 var router = express.Router();
 router.route('/')
@@ -23,24 +21,32 @@ router.route('/')
     .delete(function(req, res) {
         console.log('delete accounts');
     });
+
 router.route('/:id')
     .all(function(req, res, next) {
-        var id = req.params['id'];
+        var id = req.params.id;
         console.log('account id:' + id);
-        req.id = id;
+        req.session.id = id;
         next();
     })
     .get(function(req, res) {
-        console.log('get account id:' + req.id);
+        console.log('get account id:' + req.session.id);
     })
     .put(function(req, res) {
-        console.log('replace a account id:' + req.id);
+        console.log('replace a account id:' + req.session.id);
     })
     .delete(function(req, res) {
-        console.log('delete a account id:' + req.id);
+        console.log('delete a account id:' + req.session.id);
     });
 
-app.use('/account', router);
+var app = express();
+app.use(serveStatic(__dirname + '/public'))
+    .use(express.urlencoded({
+        extended: true
+    }))
+    .use(express.json())
+    .use(compression());
+app.use('/account', timeout(5000), router);
 
 
 
@@ -72,7 +78,6 @@ function startService() {
     });
 }
 
-var User = require('./account_db');
 
 
 

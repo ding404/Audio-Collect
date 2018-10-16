@@ -1,13 +1,18 @@
 var express = require('express');
+var session = require('express-session');
+var MongoStore = require('connect-mongo')(session);
 var http = require('http');
 var serveStatic = require('serve-static');
+var User = require('./account_db');
+var compression = require('compression');
+var timeout = require('connect-timeout');
 
-var app = express();
-app.use(serveStatic(__dirname + '/public'))
-    .use(express.urlencoded({
-        extended: true
-    }))
-    .use(express.json());
+var sessionStore = new MongoStore({
+    host: '127.0.0.1',
+    port: '27017',
+    db: 'session',
+    url: 'mongodb://localhost:27017/demo'
+});
 
 var router = express.Router();
 router.route('/')
@@ -23,24 +28,47 @@ router.route('/')
     .delete(function(req, res) {
         console.log('delete accounts');
     });
+
 router.route('/:id')
     .all(function(req, res, next) {
-        var id = req.params['id'];
+        var id = req.params.id;
         console.log('account id:' + id);
-        req.id = id;
+        console.log(req.session);
+        if (req.session.view) {
+            req.session.view++;
+        } else {
+            req.session.view = id;
+        }
+        console.log(req.session);
         next();
     })
     .get(function(req, res) {
-        console.log('get account id:' + req.id);
+        console.log('get account id:' + req.session.view);
+        res.end('' + req.session.view);
     })
     .put(function(req, res) {
-        console.log('replace a account id:' + req.id);
+        console.log('replace a account id:' + req.session.id);
+        res.end();
     })
     .delete(function(req, res) {
-        console.log('delete a account id:' + req.id);
+        console.log('delete a account id:' + req.session.id);
+        res.end();
     });
 
-app.use('/account', router);
+var app = express();
+app.use(serveStatic(__dirname + '/public'))
+    .use(session({
+        resave: true,
+        saveUninitialized: false,
+        secret: 'my super secret sign key',
+        store: sessionStore
+    }))
+    .use(express.urlencoded({
+        extended: true
+    }))
+    .use(express.json())
+    .use(compression())
+    .use('/account', timeout(5000), router);
 
 
 
@@ -72,7 +100,6 @@ function startService() {
     });
 }
 
-var User = require('./account_db');
 
 
 

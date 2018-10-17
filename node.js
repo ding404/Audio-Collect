@@ -1,46 +1,98 @@
 var express = require('express');
+var session = require('express-session');
+var MongoStore = require('connect-mongo')(session);
+var mongoose = require('mongoose');
 var http = require('http');
 var serveStatic = require('serve-static');
+var User = require('./account_db');
+var compression = require('compression');
+var timeout = require('connect-timeout');
 
-var app = express();
-app.use(serveStatic(__dirname + '/public'))
-    .use(express.urlencoded({
-        extended: true
-    }))
-    .use(express.json());
+mongoose.connect('mongodb://localhost:27017/demo', { useNewUrlParser: true });
+var db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function() {
+    // we're connected!
+});
+
+var sessionStore = new MongoStore({
+    host: '127.0.0.1',
+    port: '27017',
+    db: 'session',
+    mongooseConnection: db
+});
 
 var router = express.Router();
 router.route('/')
-    .get(function(req, res) {
+    .get(function(req, res, next) {
         console.log('get accounts');
+        return res.end('get accounts');
     })
-    .post(function(req, res) {
+    .post(function(req, res, next) {
         console.log('add a account');
         for (var key in req.body) {
             console.log(key + ' : ' + req.body[key]);
         }
+        var userData = {
+            email: req.body.email,
+            username: req.body.name,
+            password: req.body.password,
+            passwordConf: req.body.password2,
+        };
+        User.create(userData, function(error, user) {
+            if (error) {
+                return next(error);
+            } else {
+                console.log('create user by id ' + user._id);
+                req.session.userId = user._id;
+                return res.redirect('/account/' + req.session.userId);
+            }
+        });
     })
     .delete(function(req, res) {
         console.log('delete accounts');
     });
-router.route('/:id')
+
+router.route('/:userId')
     .all(function(req, res, next) {
-        var id = req.params['id'];
-        console.log('account id:' + id);
-        req.id = id;
+        var userId = req.params.userId;
+        console.log('account id:' + userId);
+        console.log(req.session);
+        req.session.userId = userId;
+        console.log(req.session);
         next();
     })
     .get(function(req, res) {
-        console.log('get account id:' + req.id);
+        console.log('get account id:' + req.session.userId);
+        res.end('' + req.session.userId);
     })
     .put(function(req, res) {
-        console.log('replace a account id:' + req.id);
+        console.log('replace a account id:' + req.session.userId);
+        res.end();
     })
     .delete(function(req, res) {
-        console.log('delete a account id:' + req.id);
+        console.log('delete a account id:' + req.session.userId);
+        res.end();
     });
 
-app.use('/account', router);
+var app = express();
+app.use(serveStatic(__dirname + '/public'))
+    .use(session({
+        resave: true,
+        saveUninitialized: false,
+        secret: 'my super secret sign key',
+        store: sessionStore
+    }))
+    .use(express.urlencoded({
+        extended: true
+    }))
+    .use(express.json())
+    .use(compression())
+    .use('/account', timeout(5000), router)
+    .use(function(err, req, res, next) {
+        res.status(err.status || 500);
+        res.send(err.message);
+    });
 
 
 
@@ -72,7 +124,6 @@ function startService() {
     });
 }
 
-var User = require('./account_db');
 
 
 

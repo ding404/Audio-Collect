@@ -9,7 +9,7 @@ var UserSchema = new mongoose.Schema({
         trim: true,
         validate: {
             validator: function(v) {
-                var re = /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/;
+                var re = /^[\w\.]+@[\w\.]+\.+[\w]{2,4}$/;
                 return re.test(v);
             },
             message: 'Not a valid email address'
@@ -44,6 +44,42 @@ var UserSchema = new mongoose.Schema({
         }
     }
 });
+
+//authenticate input against database by email
+UserSchema.statics.authenticateByEmail = function(email, password, callback) {
+    User.findOne({ email: email })
+        .exec(function(err, user) {
+            if (!user) {
+                err = new Error('User not found.');
+                err.status = 401;
+            } else if (!err) {
+                bcrypt.compare(password, user.password, function(err, result) {
+                    if (result === false) {
+                        user = null;
+                    }
+                });
+            }
+            return callback(err, user);
+        });
+};
+
+//authenticate input against database by username
+UserSchema.statics.authenticateByUsername = function(username, password, callback) {
+    User.findOne({ username: username })
+        .exec(function(err, user) {
+            if (!user) {
+                err = new Error('User not found.');
+                err.status = 401;
+            } else if (!err) {
+                bcrypt.compare(password, user.password, function(err, result) {
+                    if (result === false) {
+                        user = null;
+                    }
+                });
+            }
+            return callback(err, user);
+        });
+};
 
 UserSchema.pre('save', function(next) {
     var user = this;

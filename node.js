@@ -33,21 +33,51 @@ router.route('/')
         for (var key in req.body) {
             console.log(key + ' : ' + req.body[key]);
         }
-        var userData = {
-            email: req.body.email,
-            username: req.body.name,
-            password: req.body.password,
-            passwordConf: req.body.password2,
-        };
-        User.create(userData, function(error, user) {
-            if (error) {
-                return next(error);
-            } else {
-                console.log('create user by id ' + user._id);
-                req.session.userId = user._id;
-                return res.redirect('/account/' + req.session.userId);
+        if (req.body.email && req.body.password2) {
+            console.log('start create account');
+            var userData = {
+                email: req.body.email,
+                username: req.body.name,
+                password: req.body.password,
+                passwordConf: req.body.password2,
+            };
+            User.create(userData, function(error, user) {
+                if (error) {
+                    return next(error);
+                } else {
+                    console.log('create user by id ' + user._id);
+                    req.session.userId = user._id;
+                    return res.redirect('/account/' + req.session.userId);
+                }
+            });
+        } else if (req.body.name_or_email && !req.body.password2) {
+            console.log('start account authentication');
+            var email_re = /^[\w\.]+@[\w\.]+\.+[\w]{2,4}$/;
+            var username_re = /^[A-Za-z0-9_]{2,15}$/;
+            if (email_re.test(req.body.name_or_email)) {
+                User.authenticateByEmail(req.body.name_or_email, req.body.password, function(error, user) {
+                    if (error || !user) {
+                        var err = new Error('Wrong email or password.');
+                        err.status = 401;
+                        return next(err);
+                    } else {
+                        req.session.userId = user._id;
+                        return res.redirect('/account/' + req.session.userId);
+                    }
+                });
+            } else if (username_re.test(req.body.name_or_email)) {
+                User.authenticateByUsername(req.body.name_or_email, req.body.password, function(error, user) {
+                    if (error || !user) {
+                        var err = new Error('Wrong username or password.');
+                        err.status = 401;
+                        return next(err);
+                    } else {
+                        req.session.userId = user._id;
+                        return res.redirect('/account/' + req.session.userId);
+                    }
+                });
             }
-        });
+        }
     })
     .delete(function(req, res) {
         console.log('delete accounts');

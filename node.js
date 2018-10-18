@@ -3,7 +3,6 @@ var session = require('express-session');
 var MongoStore = require('connect-mongo')(session);
 var mongoose = require('mongoose');
 var http = require('http');
-var serveStatic = require('serve-static');
 var User = require('./account_db');
 var compression = require('compression');
 var timeout = require('connect-timeout');
@@ -106,7 +105,7 @@ router.route('/:userId')
     });
 
 var app = express();
-app.use(serveStatic(__dirname + '/public'))
+app.use(express.static(__dirname + '/public'))
     .use(session({
         resave: true,
         saveUninitialized: false,

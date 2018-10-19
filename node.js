@@ -46,7 +46,7 @@ router.route('/')
                 } else {
                     console.log('create user by id ' + user._id);
                     req.session.userId = user._id;
-                    return res.redirect('/account/' + req.session.userId);
+                    return res.redirect('/account/profile');
                 }
             });
         } else if (req.body.name_or_email && !req.body.password2) {
@@ -61,7 +61,7 @@ router.route('/')
                         return next(err);
                     } else {
                         req.session.userId = user._id;
-                        return res.redirect('/account/' + req.session.userId);
+                        return res.redirect('/account/profile');
                     }
                 });
             } else if (username_re.test(req.body.name_or_email)) {
@@ -72,7 +72,7 @@ router.route('/')
                         return next(err);
                     } else {
                         req.session.userId = user._id;
-                        return res.redirect('/account/' + req.session.userId);
+                        return res.redirect('/account/profile');
                     }
                 });
             }
@@ -81,6 +81,36 @@ router.route('/')
     .delete(function(req, res) {
         console.log('delete accounts');
     });
+
+router.get('/profile', function(req, res, next) {
+    User.findById(req.session.userId)
+        .exec(function(error, user) {
+            if (error) {
+                return next(error);
+            } else {
+                if (user === null) {
+                    var err = new Error('Not authorized! Go back!');
+                    err.status = 400;
+                    return next(err);
+                } else {
+                    return res.json(user);
+                }
+            }
+        });
+});
+
+router.get('/logout', function(req, res, next) {
+    if (req.session) {
+        // delete session object
+        req.session.destroy(function(err) {
+            if (err) {
+                return next(err);
+            } else {
+                return res.redirect('/');
+            }
+        });
+    }
+});
 
 router.route('/:userId')
     .all(function(req, res, next) {

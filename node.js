@@ -93,7 +93,7 @@ router.get('/profile', function(req, res, next) {
                     err.status = 400;
                     return next(err);
                 } else {
-                    return res.json(user);
+                    return res.json({ username: user.username, email: user.email });
                 }
             }
         });

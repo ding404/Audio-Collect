@@ -93,7 +93,14 @@ router.get('/profile', function(req, res, next) {
                     err.status = 400;
                     return next(err);
                 } else {
-                    return res.sendFile(__dirname + '/public/profile.html');
+                    if (req.headers.referer.includes('/account/profile')) {
+                        return res.json({ 'username': user.username, 'email': user.email });
+                    } else if (req.headers.referer.includes('/register')
+                        || req.headers.referer.includes('/login')) {
+                        return res.sendFile(__dirname + '/public/profile.html');
+                    } else {
+                        return next();
+                    }
                 }
             }
         });

@@ -94,7 +94,8 @@ account_router.get('/profile', isAuthenticated, function(req, res, next) {
                     return next(err);
                 } else {
                     if (req.headers.referer.includes('/account/profile') ||
-                        req.headers.referer.includes('/collection/main')) {
+                        req.headers.referer.includes('/collection/main') ||
+                        req.headers.referer.includes('/collection/setting')) {
                         var redirectTo = req.session.redirectTo;
                         delete req.session.redirectTo;
                         return res.json({
@@ -163,9 +164,21 @@ collection_router.route('/main')
     });
 collection_router.route('/setting')
     .get(function(req, res) {
+        return res.sendFile(__dirname + '/public/collection_setting.html');
+    })
+    .post(function(req, res) {
+        if (req.headers.referer.includes('/collection/setting')) {
+            for (var key in req.body) {
+                console.log(key + ' : ' + req.body[key]);
+            }
+            return res.redirect('/collection/list');
+        } else {
+            return next();
+        }
     });
 collection_router.route('/list')
     .get(function(req, res) {
+        return res.sendFile(__dirname + '/public/recorder_list.html');
     });
 
 var app = express();

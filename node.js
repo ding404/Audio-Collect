@@ -21,14 +21,13 @@ var sessionStore = new MongoStore({
     mongooseConnection: db
 });
 
-var router = express.Router();
-router.route('/')
+var account_router = express.Router();
+account_router.route('/')
     .get(function(req, res, next) {
         console.log('get accounts');
         return res.end('get accounts');
     })
     .post(function(req, res, next) {
-        console.log('add a account');
         for (var key in req.body) {
             console.log(key + ' : ' + req.body[key]);
         }
@@ -46,6 +45,7 @@ router.route('/')
                 } else {
                     console.log('create user by id ' + user._id);
                     req.session.userId = user._id;
+                    req.session.redirectTo = '/collection/main';
                     return res.redirect('/account/profile');
                 }
             });
@@ -61,7 +61,7 @@ router.route('/')
                         return next(err);
                     } else {
                         req.session.userId = user._id;
-                        return res.redirect('/account/profile');
+                        return res.redirect('/collection/main');
                     }
                 });
             } else if (username_re.test(req.body.name_or_email)) {
@@ -72,7 +72,7 @@ router.route('/')
                         return next(err);
                     } else {
                         req.session.userId = user._id;
-                        return res.redirect('/account/profile');
+                        return res.redirect('/collection/main');
                     }
                 });
             }
@@ -82,7 +82,7 @@ router.route('/')
         console.log('delete accounts');
     });
 
-router.get('/profile', function(req, res, next) {
+account_router.get('/profile', isAuthenticated, function(req, res, next) {
     User.findById(req.session.userId)
         .exec(function(error, user) {
             if (error) {
@@ -93,20 +93,34 @@ router.get('/profile', function(req, res, next) {
                     err.status = 400;
                     return next(err);
                 } else {
-                    if (req.headers.referer.includes('/account/profile')) {
-                        return res.json({ 'username': user.username, 'email': user.email });
-                    } else if (req.headers.referer.includes('/register')
-                        || req.headers.referer.includes('/login')) {
-                        return res.sendFile(__dirname + '/public/profile.html');
+                    if (req.headers.referer.includes('/account/profile') ||
+                        req.headers.referer.includes('/collection/main')) {
+                        var redirectTo = req.session.redirectTo;
+                        delete req.session.redirectTo;
+                        return res.json({
+                            'username': user.username,
+                            'email': user.email,
+                            'redirectTo': redirectTo
+                        });
                     } else {
-                        return next();
+                        return res.sendFile(__dirname + '/public/profile.html');
                     }
                 }
             }
         });
 });
 
-router.get('/logout', function(req, res, next) {
+function isAuthenticated(req, res, next) {
+    if (req.session.userId) {
+        console.log('authenticated');
+        next();
+    } else {
+        console.log('not authenticated');
+        res.redirect('/');
+    }
+}
+
+account_router.get('/logout', function(req, res, next) {
     if (req.session) {
         // delete session object
         req.session.destroy(function(err) {
@@ -119,7 +133,7 @@ router.get('/logout', function(req, res, next) {
     }
 });
 
-router.route('/:userId')
+account_router.route('/:userId')
     .all(function(req, res, next) {
         var userId = req.params.userId;
         console.log('account id:' + userId);
@@ -141,6 +155,19 @@ router.route('/:userId')
         res.end();
     });
 
+var collection_router = express.Router();
+collection_router.use(isAuthenticated);
+collection_router.route('/main')
+    .get(function(req, res) {
+        return res.sendFile(__dirname + '/public/main.html');
+    });
+collection_router.route('/setting')
+    .get(function(req, res) {
+    });
+collection_router.route('/list')
+    .get(function(req, res) {
+    });
+
 var app = express();
 app.use(express.static(__dirname + '/public'))
     .use(session({
@@ -154,7 +181,8 @@ app.use(express.static(__dirname + '/public'))
     }))
     .use(express.json())
     .use(compression())
-    .use('/account', timeout(5000), router)
+    .use('/account', timeout(5000), account_router)
+    .use('/collection', timeout(5000), collection_router)
     .use(function(err, req, res, next) {
         res.status(err.status || 500);
         res.send(err.message);

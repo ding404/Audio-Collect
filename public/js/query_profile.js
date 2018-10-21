@@ -6,6 +6,11 @@ function query_profile() {
             var profile = JSON.parse(this.responseText);
             document.getElementById("username").innerHTML = profile.username;
             document.getElementById("email").innerHTML = profile.email;
+            if (profile.redirectTo) {
+                setTimeout(function() {
+                    window.location.href = profile.redirectTo;
+                }, 2000);
+            }
         }
     };
     xhttp.open("GET", "/account/profile", true);

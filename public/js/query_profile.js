@@ -5,7 +5,10 @@ function query_profile() {
         if (this.readyState == 4 && this.status == 200) {
             var profile = JSON.parse(this.responseText);
             document.getElementById("username").innerHTML = profile.username;
-            document.getElementById("email").innerHTML = profile.email;
+            var emailElem = document.getElementById("email");
+            if (emailElem) {
+                document.getElementById("email").innerHTML = profile.email;
+            }
             if (profile.redirectTo) {
                 setTimeout(function() {
                     window.location.href = profile.redirectTo;

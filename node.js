@@ -95,7 +95,8 @@ account_router.get('/profile', isAuthenticated, function(req, res, next) {
                 } else {
                     if (req.headers.referer.includes('/account/profile') ||
                         req.headers.referer.includes('/collection/main') ||
-                        req.headers.referer.includes('/collection/setting')) {
+                        req.headers.referer.includes('/collection/setting') ||
+                        req.headers.referer.includes('/collection/list')) {
                         var redirectTo = req.session.redirectTo;
                         delete req.session.redirectTo;
                         return res.json({
@@ -168,8 +169,10 @@ collection_router.route('/setting')
     })
     .post(function(req, res) {
         if (req.headers.referer.includes('/collection/setting')) {
+            req.session.collection_setting = {};
             for (var key in req.body) {
                 console.log(key + ' : ' + req.body[key]);
+                req.session.collection_setting.key = req.body[key];
             }
             return res.redirect('/collection/list');
         } else {

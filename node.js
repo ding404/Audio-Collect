@@ -2,7 +2,8 @@ var express = require('express');
 var session = require('express-session');
 var MongoStore = require('connect-mongo')(session);
 var mongoose = require('mongoose');
-var http = require('http');
+var https = require('https');
+var fs = require('fs');
 var User = require('./account_db');
 var compression = require('compression');
 var timeout = require('connect-timeout');
@@ -197,6 +198,10 @@ app.use(express.static(__dirname + '/public'))
     }))
     .use(express.json())
     .use(compression())
+    .use('/client_console/:log', timeout(5000), function(req, res, next) {
+        console.log('client : ' + req.params.log);
+        next();
+    })
     .use('/account', timeout(5000), account_router)
     .use('/collection', timeout(5000), collection_router)
     .use(function(err, req, res, next) {
@@ -225,10 +230,14 @@ function getLocalAddress() {
 }
 
 function startService() {
-    var server = http.createServer(app);
+    var options = {
+        key: fs.readFileSync('./cert/nodejs_https_key.pem'),
+        cert: fs.readFileSync('./cert/nodejs_https_cert.pem')
+    };
+    var server = https.createServer(options, app);
     server.listen(3000, getLocalAddress());
     server.on('listening', function() {
-        console.log('Express server started on http://%s:%s'
+        console.log('Express server started on https://%s:%s'
             , server.address().address
             , server.address().port);
     });
